@@ -1,0 +1,1 @@
+Init of LLMP - Language-Learning focused music player
