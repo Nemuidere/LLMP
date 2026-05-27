@@ -62,12 +62,5 @@ export interface SongOut {
   youtube_video_id: string | null;
   is_topic_match: boolean;
   ingestion_status: "ingesting" | "ready" | "failed";
-  effective_offset_ms: number;
   lines: LineOut[];
-}
-
-export interface OffsetSubmitResponse {
-  song_id: number;
-  effective_offset_ms: number;
-  submission_count: number;
 }

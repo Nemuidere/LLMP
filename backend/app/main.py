@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import offsets as offsets_api
+from app.api import anki as anki_api
 from app.api import songs as songs_api
 from app.config import get_settings
 from app.db import init_db
@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(songs_api.router, prefix="/api")
-    app.include_router(offsets_api.router, prefix="/api")
+    app.include_router(anki_api.router, prefix="/api")
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

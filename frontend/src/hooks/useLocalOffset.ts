@@ -41,7 +41,8 @@ export function useLocalOffset(songId: number | undefined) {
   const clear = useCallback(() => {
     if (storageKey) localStorage.removeItem(storageKey);
     setHasOverride(false);
+    setOffsetMs(0);
   }, [storageKey]);
 
-  return { offsetMs, setOffsetMs: update, hasOverride, clear, setSilent: setOffsetMs };
+  return { offsetMs, setOffsetMs: update, hasOverride, clear };
 }

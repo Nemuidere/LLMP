@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -19,7 +19,6 @@ export default function PlayerPage() {
   const {
     offsetMs: localOffsetMs,
     setOffsetMs: setLocalOffsetMs,
-    setSilent: setLocalOffsetSilent,
     hasOverride: hasLocalOverride,
     clear: clearLocalOffset,
   } = useLocalOffset(Number.isFinite(id) ? id : undefined);
@@ -44,12 +43,6 @@ export default function PlayerPage() {
     queryFn: () => api.song(id),
     enabled: ready,
   });
-
-  // On first load, fall back to the community offset only when the
-  // user has no local override saved for this song.
-  useEffect(() => {
-    if (song && !hasLocalOverride) setLocalOffsetSilent(song.effective_offset_ms);
-  }, [song, hasLocalOverride, setLocalOffsetSilent]);
 
   const activeIndex = usePlaybackSync({
     lines: song?.lines ?? [],
@@ -137,19 +130,11 @@ export default function PlayerPage() {
       <SyncControls
         offsetMs={localOffsetMs}
         onChange={setLocalOffsetMs}
-        onSave={async (ms) => {
-          const r = await api.submitOffset(id, ms);
-          return r.effective_offset_ms;
-        }}
         font={font}
         showRomaji={romaji.show}
         onToggleRomaji={romaji.toggle}
         hasLocalOverride={hasLocalOverride}
-        communityOffsetMs={song.effective_offset_ms}
-        onClearLocalOverride={() => {
-          clearLocalOffset();
-          setLocalOffsetSilent(song.effective_offset_ms);
-        }}
+        onClearLocalOverride={clearLocalOffset}
       />
 
       <p className="text-center font-mono text-[11px] text-slate-600">

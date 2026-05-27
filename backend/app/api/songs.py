@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import LemmaDefinition, Line, Song, Token
 from app.services import dictionary, ingestion, lrclib
-from app.services.offsets import effective_offset_ms
 
 router = APIRouter(prefix="/songs", tags=["songs"])
 
@@ -69,7 +68,6 @@ class SongOut(BaseModel):
     youtube_video_id: str | None
     is_topic_match: bool
     ingestion_status: str
-    effective_offset_ms: int
     lines: list[LineOut] = Field(default_factory=list)
 
 
@@ -281,6 +279,5 @@ def get_song(song_id: int, db: Session = Depends(get_db)) -> SongOut:
         youtube_video_id=song.youtube_video_id,
         is_topic_match=song.is_topic_match,
         ingestion_status=song.ingestion_status,
-        effective_offset_ms=effective_offset_ms(db, song.id),
         lines=lines_out,
     )

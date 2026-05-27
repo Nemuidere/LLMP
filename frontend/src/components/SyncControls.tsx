@@ -1,9 +1,6 @@
-import { useState } from "react";
-
 interface Props {
   offsetMs: number;
   onChange: (ms: number) => void;
-  onSave: (ms: number) => Promise<number>;
   font: {
     scale: number;
     increase: () => void;
@@ -13,39 +10,20 @@ interface Props {
   showRomaji?: boolean;
   onToggleRomaji?: () => void;
   hasLocalOverride?: boolean;
-  communityOffsetMs?: number;
   onClearLocalOverride?: () => void;
 }
 
 export default function SyncControls({
   offsetMs,
   onChange,
-  onSave,
   font,
   showRomaji,
   onToggleRomaji,
   hasLocalOverride,
-  communityOffsetMs,
   onClearLocalOverride,
 }: Props) {
-  const [saving, setSaving] = useState(false);
-  const [savedHint, setSavedHint] = useState<string | null>(null);
-
   function bump(delta: number) {
     onChange(offsetMs + delta);
-  }
-
-  async function save() {
-    setSaving(true);
-    setSavedHint(null);
-    try {
-      const effective = await onSave(offsetMs);
-      setSavedHint(`saved · community offset = ${effective}ms`);
-    } catch (e) {
-      setSavedHint(`save failed: ${(e as Error).message.slice(0, 80)}`);
-    } finally {
-      setSaving(false);
-    }
   }
 
   return (
@@ -63,11 +41,7 @@ export default function SyncControls({
         {hasLocalOverride && onClearLocalOverride && (
           <button
             onClick={onClearLocalOverride}
-            title={
-              communityOffsetMs != null
-                ? `Drop your saved offset and use the community value (${communityOffsetMs}ms)`
-                : "Drop your saved offset"
-            }
+            title="Drop your saved offset and go back to 0"
             className="ml-2 rounded-md border border-ink-700/80 bg-ink-800/40 px-2 py-1 text-[10px] uppercase tracking-wider text-slate-400 transition hover:border-accent-400/40 hover:text-accent-200"
           >
             reset
@@ -99,14 +73,6 @@ export default function SyncControls({
             romaji
           </button>
         )}
-        {savedHint && <span className="text-xs text-slate-400">{savedHint}</span>}
-        <button
-          onClick={save}
-          disabled={saving}
-          className="rounded-md border border-accent-400/40 bg-accent-400/10 px-3 py-1.5 text-xs font-medium text-accent-200 transition hover:bg-accent-400/20 disabled:opacity-50"
-        >
-          {saving ? "saving…" : "save to community"}
-        </button>
       </div>
     </div>
   );

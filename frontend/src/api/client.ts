@@ -3,7 +3,6 @@ import type {
   IngestRequest,
   IngestResponse,
   LibraryEntry,
-  OffsetSubmitResponse,
   SongOut,
   StatusResponse,
 } from "./types";
@@ -37,9 +36,21 @@ export const api = {
     const res = await fetch(`/api/songs/${songId}`, { method: "DELETE" });
     if (!res.ok) throw new Error(`delete failed: ${res.status}`);
   },
-  submitOffset: (songId: number, offsetMs: number) =>
-    request<OffsetSubmitResponse>(`/api/songs/${songId}/offset`, {
+  ankiPreview: (language: string, songIds: number[]) =>
+    request<{ language: string; count: number; sample: string[] }>("/api/anki/preview", {
       method: "POST",
-      body: JSON.stringify({ offset_ms: offsetMs }),
+      body: JSON.stringify({ language, song_ids: songIds }),
     }),
+  ankiExport: async (language: string, songIds: number[]): Promise<Blob> => {
+    const res = await fetch("/api/anki/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language, song_ids: songIds }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`${res.status}: ${body.slice(0, 200)}`);
+    }
+    return res.blob();
+  },
 };

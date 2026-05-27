@@ -18,15 +18,6 @@ class Settings(BaseSettings):
     deepl_api_key: str = ""
     database_url: str = f"sqlite:///{BACKEND_DIR / 'llmp.db'}"
 
-    # Crowdsourced offset behavior. Threshold is the minimum number of
-    # submissions required before the median is applied; setting it very
-    # high effectively disables community correction (per AGENTS.md §3).
-    offset_min_submissions: int = 9999
-    offset_enabled: bool = False
-
-    # Per-instance salt used when hashing submitter IPs.
-    ip_hash_salt: str = "llmp-dev-salt"
-
     cors_origins: list[str] = ["http://localhost:5173"]
 
 

@@ -33,8 +33,6 @@ export default function App() {
             >
               Library
             </NavLink>
-            <span className="text-slate-600">·</span>
-            <span className="text-slate-500">Russian · v0.1</span>
           </nav>
         </div>
       </header>
