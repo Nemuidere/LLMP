@@ -1,0 +1,16 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+httpx>=0.27
+pymorphy3>=2.0
+pymorphy3-dicts-ru>=2.4
+razdel>=0.5
+transliterate>=1.10
+deepl>=1.18
+python-dotenv>=1.0
+pydantic>=2.7
+pydantic-settings>=2.4
+
+[dev]
+ruff>=0.6
+pytest>=8.0

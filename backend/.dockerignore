@@ -1,0 +1,9 @@
+.venv
+__pycache__
+*.pyc
+*.db
+data/*.jsonl
+data/*.jsonl:Zone.Identifier
+.env
+.pytest_cache
+.ruff_cache
