@@ -1,7 +1,8 @@
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes } from "react-router-dom";
 
 import SearchPage from "./pages/Search";
 import PlayerPage from "./pages/Player";
+import LibraryPage from "./pages/Library";
 
 export default function App() {
   return (
@@ -14,13 +15,34 @@ export default function App() {
           >
             LLMP
           </Link>
-          <span className="text-xs text-slate-500">Russian · v0.1</span>
+          <nav className="flex items-center gap-5 text-xs">
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                `transition-colors ${isActive ? "text-accent-200" : "text-slate-400 hover:text-slate-100"}`
+              }
+            >
+              Search
+            </NavLink>
+            <NavLink
+              to="/library"
+              className={({ isActive }) =>
+                `transition-colors ${isActive ? "text-accent-200" : "text-slate-400 hover:text-slate-100"}`
+              }
+            >
+              Library
+            </NavLink>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-500">Russian · v0.1</span>
+          </nav>
         </div>
       </header>
 
       <main className="flex flex-1 flex-col">
         <Routes>
           <Route path="/" element={<SearchPage />} />
+          <Route path="/library" element={<LibraryPage />} />
           <Route path="/song/:songId" element={<PlayerPage />} />
         </Routes>
       </main>

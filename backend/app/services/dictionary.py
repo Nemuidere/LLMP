@@ -1,7 +1,11 @@
 """Lemma → definition lookup against the LemmaDefinition table.
 
-The table is populated by ``scripts/build_dictionary.py`` from the
-kaikki.org Russian Wiktionary JSONL dump.
+Per-language dispatch on POS candidates:
+- Russian: pymorphy3 POS tags → kaikki (Russian Wiktionary) POS labels
+- Japanese: SudachiPy top-level POS → kaikki (Japanese Wiktionary) POS labels
+
+The table is populated by ``scripts/build_dictionary.py`` from kaikki.org's
+pre-parsed JSONL dumps.
 """
 
 from __future__ import annotations
@@ -11,40 +15,56 @@ from sqlalchemy.orm import Session
 
 from app.models import LemmaDefinition
 
-# pymorphy3 POS tags → Wiktionary part-of-speech labels. Keep this loose;
-# fallbacks below recover when the tag doesn't match exactly.
-_POS_MAP = {
-    "NOUN": "noun",
-    "VERB": "verb",
-    "INFN": "verb",
-    "ADJF": "adj",
-    "ADJS": "adj",
-    "COMP": "adj",
-    "ADVB": "adv",
-    "NPRO": "pron",
-    "PRED": "adv",
-    "PREP": "prep",
-    "CONJ": "conj",
-    "PRCL": "particle",
-    "INTJ": "intj",
-    "NUMR": "num",
+# ----- Russian (pymorphy3 POS → kaikki POS) -----
+
+_RU_POS_CANDIDATES: dict[str, tuple[str, ...]] = {
+    "NOUN": ("noun",),
+    "VERB": ("verb",),
+    "INFN": ("verb",),
+    "ADJF": ("adj", "pron"),
+    "ADJS": ("adj", "pron"),
+    "COMP": ("adj",),
+    "ADVB": ("adv",),
+    "NPRO": ("pron",),
+    "PRED": ("adv",),
+    "PREP": ("prep",),
+    "CONJ": ("conj",),
+    "PRCL": ("particle",),
+    "INTJ": ("intj",),
+    "NUMR": ("num",),
+    "PRTF": ("verb",),
+    "PRTS": ("verb",),
+    "GRND": ("verb",),
 }
 
 
-def normalize_pos(pymorphy_pos: str | None) -> str | None:
+def candidate_pos(pymorphy_pos: str | None, language: str = "ru") -> tuple[str, ...]:
     if not pymorphy_pos:
-        return None
-    return _POS_MAP.get(pymorphy_pos)
+        return ()
+    if language == "ja":
+        from app.services.nlp.ja import candidate_kaikki_pos
+
+        return candidate_kaikki_pos(pymorphy_pos)
+    return _RU_POS_CANDIDATES.get(pymorphy_pos, ())
 
 
-def lookup(db: Session, lemma: str, pos: str | None = None) -> LemmaDefinition | None:
+def normalize_pos(pymorphy_pos: str | None, language: str = "ru") -> str | None:
+    """Backwards-compatible single-value lookup (first candidate only)."""
+    cands = candidate_pos(pymorphy_pos, language)
+    return cands[0] if cands else None
+
+
+def lookup(
+    db: Session, lemma: str, pos: str | None = None, language: str = "ru"
+) -> LemmaDefinition | None:
     if not lemma:
         return None
-    wiktionary_pos = normalize_pos(pos)
-    stmt = select(LemmaDefinition).where(LemmaDefinition.lemma == lemma)
-    if wiktionary_pos:
-        row = db.execute(stmt.where(LemmaDefinition.pos == wiktionary_pos)).scalar_one_or_none()
+    stmt_base = select(LemmaDefinition).where(
+        LemmaDefinition.language == language,
+        LemmaDefinition.lemma == lemma,
+    )
+    for cand in candidate_pos(pos, language):
+        row = db.execute(stmt_base.where(LemmaDefinition.pos == cand)).scalar_one_or_none()
         if row:
             return row
-    # Fallback: any POS row for that lemma.
-    return db.execute(stmt.limit(1)).scalar_one_or_none()
+    return db.execute(stmt_base.limit(1)).scalar_one_or_none()

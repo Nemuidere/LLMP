@@ -24,4 +24,13 @@
     scrollbar-width: thin;
     scrollbar-color: theme("colors.ink.700") transparent;
   }
+
+  /* Furigana ruby spacing — lift the line height so the small rt text
+     above each kanji doesn't crash into the line above. */
+  .ruby-line {
+    line-height: 2.1;
+  }
+  .ruby-line ruby > rt {
+    line-height: 1;
+  }
 }

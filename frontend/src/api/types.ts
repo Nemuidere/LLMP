@@ -30,6 +30,7 @@ export interface TokenOut {
   pos: string | null;
   grammar: string | null;
   is_word: boolean;
+  reading: string | null;
   definition_en: string | null;
 }
 
@@ -40,6 +41,17 @@ export interface LineOut {
   transliteration: string;
   translation: string | null;
   tokens: TokenOut[];
+}
+
+export interface LibraryEntry {
+  id: number;
+  artist: string;
+  title: string;
+  language: string;
+  ingestion_status: "ingesting" | "ready" | "failed";
+  is_topic_match: boolean;
+  youtube_video_id: string | null;
+  updated_at: string;
 }
 
 export interface SongOut {

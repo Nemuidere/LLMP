@@ -12,6 +12,9 @@ dependencies = [
     "pymorphy3-dicts-ru>=2.4",
     "razdel>=0.5",
     "transliterate>=1.10",
+    "sudachipy>=0.6",
+    "sudachidict_full>=20240916",
+    "pykakasi>=2.2",
     "deepl>=1.18",
     "python-dotenv>=1.0",
     "pydantic>=2.7",
@@ -29,7 +32,14 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["app", "app.api", "app.services", "scripts"]
+packages = [
+    "app",
+    "app.api",
+    "app.services",
+    "app.services.nlp",
+    "app.services.translit",
+    "scripts",
+]
 
 [tool.ruff]
 line-length = 100

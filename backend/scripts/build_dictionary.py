@@ -1,17 +1,24 @@
-"""One-time loader: kaikki.org Russian Wiktionary JSONL → LemmaDefinition.
+"""One-time loader: kaikki.org Wiktionary JSONL → LemmaDefinition.
 
-Run with the backend venv active::
+Run from the backend container or local venv::
 
-    python -m scripts.build_dictionary [path/to/kaikki.jsonl]
+    python -m scripts.build_dictionary --language ru [path/to/kaikki-ru.jsonl]
+    python -m scripts.build_dictionary --language ja [path/to/kaikki-ja.jsonl]
 
-Streams the file line-by-line; does not load the full 300MB into memory.
-Idempotent: existing rows for (lemma, pos) are replaced.
+Default file paths:
+    Russian: backend/data/kaikki.org-dictionary-Russian.jsonl
+    Japanese: backend/data/kaikki.org-dictionary-Japanese.jsonl
+
+Streams the file line-by-line; does not load the full dump into memory.
+Idempotent: existing rows for ``(language, lemma, pos)`` are replaced.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -20,8 +27,12 @@ from app.config import BACKEND_DIR
 from app.db import SessionLocal, init_db
 from app.models import LemmaDefinition
 
-DEFAULT_PATH = BACKEND_DIR / "data" / "kaikki.org-dictionary-Russian.jsonl"
 BATCH_SIZE = 2000
+
+_DEFAULT_PATHS = {
+    "ru": BACKEND_DIR / "data" / "kaikki.org-dictionary-Russian.jsonl",
+    "ja": BACKEND_DIR / "data" / "kaikki.org-dictionary-Japanese.jsonl",
+}
 
 
 def _glosses_for(entry: dict) -> list[str]:
@@ -39,10 +50,10 @@ def _examples_for(entry: dict) -> list[dict]:
         for ex in sense.get("examples") or []:
             if isinstance(ex, dict):
                 out.append({"text": ex.get("text"), "english": ex.get("english")})
-    return out[:5]  # cap to keep rows small
+    return out[:5]
 
 
-def iter_rows(path: Path):
+def iter_rows(path: Path, language: str) -> Iterator[dict]:
     with path.open("r", encoding="utf-8") as f:
         for raw in f:
             raw = raw.strip()
@@ -60,6 +71,7 @@ def iter_rows(path: Path):
             if not glosses:
                 continue
             yield {
+                "language": language,
                 "lemma": lemma,
                 "pos": pos,
                 "definition_en": "; ".join(glosses[:5]),
@@ -67,8 +79,21 @@ def iter_rows(path: Path):
             }
 
 
-def main(path_arg: str | None = None) -> int:
-    path = Path(path_arg) if path_arg else DEFAULT_PATH
+def _flush(db, batch: list[dict]) -> None:
+    stmt = sqlite_insert(LemmaDefinition).values(batch)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["language", "lemma", "pos"],
+        set_={
+            "definition_en": stmt.excluded.definition_en,
+            "examples": stmt.excluded.examples,
+        },
+    )
+    db.execute(stmt)
+    db.commit()
+
+
+def main(language: str, path_arg: str | None = None) -> int:
+    path = Path(path_arg) if path_arg else _DEFAULT_PATHS[language]
     if not path.exists():
         print(f"Dictionary file not found: {path}", file=sys.stderr)
         return 2
@@ -79,43 +104,28 @@ def main(path_arg: str | None = None) -> int:
     batch: list[dict] = []
 
     try:
-        for row in iter_rows(path):
+        for row in iter_rows(path, language):
             batch.append(row)
             if len(batch) >= BATCH_SIZE:
-                stmt = sqlite_insert(LemmaDefinition).values(batch)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["lemma", "pos"],
-                    set_={
-                        "definition_en": stmt.excluded.definition_en,
-                        "examples": stmt.excluded.examples,
-                    },
-                )
-                db.execute(stmt)
-                db.commit()
+                _flush(db, batch)
                 inserted += len(batch)
                 batch.clear()
                 if inserted % 20000 == 0:
                     print(f"... {inserted} rows")
-
         if batch:
-            stmt = sqlite_insert(LemmaDefinition).values(batch)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["lemma", "pos"],
-                set_={
-                    "definition_en": stmt.excluded.definition_en,
-                    "examples": stmt.excluded.examples,
-                },
-            )
-            db.execute(stmt)
-            db.commit()
+            _flush(db, batch)
             inserted += len(batch)
 
-        total = db.query(LemmaDefinition).count()
-        print(f"Done. Upserted {inserted} rows; table now has {total} entries.")
+        total = db.query(LemmaDefinition).filter(LemmaDefinition.language == language).count()
+        print(f"Done. Upserted {inserted} rows; {language!r} table has {total} entries.")
         return 0
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1] if len(sys.argv) > 1 else None))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--language", choices=["ru", "ja"], default="ru")
+    parser.add_argument("path", nargs="?", default=None)
+    args = parser.parse_args()
+    raise SystemExit(main(args.language, args.path))

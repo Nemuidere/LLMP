@@ -9,7 +9,9 @@ import {
 export interface PlayerHandle {
   play: () => void;
   pause: () => void;
+  togglePlay: () => void;
   seekMs: (ms: number) => void;
+  seekDeltaMs: (deltaMs: number) => void;
   getCurrentTimeMs: () => number;
 }
 
@@ -70,7 +72,23 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId }, ref) => {
     () => ({
       play: () => playerRef.current?.playVideo(),
       pause: () => playerRef.current?.pauseVideo(),
+      togglePlay: () => {
+        const p = playerRef.current;
+        if (!p || !ready) return;
+        // 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING; toggle from anything-not-playing → play.
+        const state = p.getPlayerState?.();
+        if (state === 1) p.pauseVideo();
+        else p.playVideo();
+      },
       seekMs: (ms: number) => playerRef.current?.seekTo(ms / 1000, true),
+      seekDeltaMs: (deltaMs: number) => {
+        const p = playerRef.current;
+        if (!p || !ready) return;
+        const now = (p.getCurrentTime?.() ?? 0) * 1000;
+        const dur = (p.getDuration?.() ?? 0) * 1000;
+        const target = Math.max(0, dur > 0 ? Math.min(dur, now + deltaMs) : now + deltaMs);
+        p.seekTo(target / 1000, true);
+      },
       getCurrentTimeMs: () => {
         const p = playerRef.current;
         if (!p || !ready) return 0;

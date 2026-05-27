@@ -2,6 +2,7 @@ import type {
   AutocompleteHit,
   IngestRequest,
   IngestResponse,
+  LibraryEntry,
   OffsetSubmitResponse,
   SongOut,
   StatusResponse,
@@ -31,6 +32,11 @@ export const api = {
   song: (songId: number) => request<SongOut>(`/api/songs/${songId}`),
   reingest: (songId: number) =>
     request<StatusResponse>(`/api/songs/${songId}/reingest`, { method: "POST" }),
+  library: () => request<LibraryEntry[]>("/api/songs"),
+  deleteSong: async (songId: number) => {
+    const res = await fetch(`/api/songs/${songId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(`delete failed: ${res.status}`);
+  },
   submitOffset: (songId: number, offsetMs: number) =>
     request<OffsetSubmitResponse>(`/api/songs/${songId}/offset`, {
       method: "POST",

@@ -6,12 +6,18 @@ interface Props {
   isActive: boolean;
   distance: number;
   fontScale: number;
+  showRomaji: boolean;
 }
 
-export default function LyricLine({ line, isActive, distance, fontScale }: Props) {
-  // Three visible slots (active + one above + one below) stay bright.
-  // Lines further than that fade via the top/bottom gradient overlays.
+export default function LyricLine({
+  line,
+  isActive,
+  distance,
+  fontScale,
+  showRomaji,
+}: Props) {
   const opacity = isActive ? 1 : Math.abs(distance) <= 1 ? 0.75 : 0.45;
+  const hasFurigana = line.tokens.some((t) => t.is_word && t.reading);
 
   return (
     <div
@@ -24,7 +30,7 @@ export default function LyricLine({ line, isActive, distance, fontScale }: Props
       <p
         className={`flex flex-wrap justify-center gap-x-1.5 font-cyr font-medium leading-snug ${
           isActive ? "text-white" : "text-slate-100"
-        }`}
+        } ${hasFurigana ? "ruby-line" : ""}`}
         style={{ fontSize: `${1.5 * fontScale}rem` }}
       >
         {line.tokens.length > 0 ? (
@@ -34,12 +40,14 @@ export default function LyricLine({ line, isActive, distance, fontScale }: Props
         )}
       </p>
 
-      <p
-        className="font-mono leading-snug text-slate-300"
-        style={{ fontSize: `${0.95 * fontScale}rem` }}
-      >
-        {line.transliteration}
-      </p>
+      {showRomaji && line.transliteration && (
+        <p
+          className="font-mono leading-snug text-slate-300"
+          style={{ fontSize: `${0.95 * fontScale}rem` }}
+        >
+          {line.transliteration}
+        </p>
+      )}
 
       {line.translation && (
         <p

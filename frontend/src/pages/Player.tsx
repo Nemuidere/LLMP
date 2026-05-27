@@ -7,16 +7,26 @@ import LyricsView from "../components/LyricsView";
 import SyncControls from "../components/SyncControls";
 import YouTubePlayer, { type PlayerHandle } from "../components/YouTubePlayer";
 import { useFontScale } from "../hooks/useFontScale";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useLocalOffset } from "../hooks/useLocalOffset";
 import { usePlaybackSync } from "../hooks/usePlaybackSync";
+import { useRomajiToggle } from "../hooks/useRomajiToggle";
 
 export default function PlayerPage() {
   const { songId } = useParams();
   const id = Number(songId);
   const playerRef = useRef<PlayerHandle | null>(null);
-  const [localOffsetMs, setLocalOffsetMs] = useState(0);
+  const {
+    offsetMs: localOffsetMs,
+    setOffsetMs: setLocalOffsetMs,
+    setSilent: setLocalOffsetSilent,
+    hasOverride: hasLocalOverride,
+    clear: clearLocalOffset,
+  } = useLocalOffset(Number.isFinite(id) ? id : undefined);
   const [reingesting, setReingesting] = useState(false);
   const font = useFontScale();
   const queryClient = useQueryClient();
+  const romaji = useRomajiToggle(undefined); // initialised after song loads via effect below
 
   // Poll status until ingestion finishes, then fetch full song.
   const { data: status } = useQuery({
@@ -35,15 +45,23 @@ export default function PlayerPage() {
     enabled: ready,
   });
 
-  // Apply community offset to local offset on first load.
+  // On first load, fall back to the community offset only when the
+  // user has no local override saved for this song.
   useEffect(() => {
-    if (song) setLocalOffsetMs(song.effective_offset_ms);
-  }, [song]);
+    if (song && !hasLocalOverride) setLocalOffsetSilent(song.effective_offset_ms);
+  }, [song, hasLocalOverride, setLocalOffsetSilent]);
 
   const activeIndex = usePlaybackSync({
     lines: song?.lines ?? [],
     offsetMs: localOffsetMs,
     getCurrentTimeMs: () => playerRef.current?.getCurrentTimeMs() ?? 0,
+  });
+
+  useKeyboardShortcuts({
+    togglePlay: () => playerRef.current?.togglePlay(),
+    seekDeltaMs: (delta) => playerRef.current?.seekDeltaMs(delta),
+    syncDeltaMs: (delta) => setLocalOffsetMs(localOffsetMs + delta),
+    fontDelta: (delta) => (delta > 0 ? font.increase() : font.decrease()),
   });
 
   async function reingest() {
@@ -88,6 +106,9 @@ export default function PlayerPage() {
           <p className="text-sm text-slate-400">{song.artist}</p>
         </div>
         <div className="flex items-center gap-3">
+          <span className="rounded-full border border-ink-700 bg-ink-800/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-400">
+            {song.language}
+          </span>
           {!song.is_topic_match && song.youtube_video_id && (
             <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs text-amber-200">
               Best-guess YouTube match — sync may need adjustment
@@ -110,6 +131,7 @@ export default function PlayerPage() {
         lines={song.lines}
         activeIndex={activeIndex}
         fontScale={font.scale}
+        showRomaji={romaji.show}
       />
 
       <SyncControls
@@ -120,7 +142,19 @@ export default function PlayerPage() {
           return r.effective_offset_ms;
         }}
         font={font}
+        showRomaji={romaji.show}
+        onToggleRomaji={romaji.toggle}
+        hasLocalOverride={hasLocalOverride}
+        communityOffsetMs={song.effective_offset_ms}
+        onClearLocalOverride={() => {
+          clearLocalOffset();
+          setLocalOffsetSilent(song.effective_offset_ms);
+        }}
       />
+
+      <p className="text-center font-mono text-[11px] text-slate-600">
+        space play/pause · ← → seek 5s (shift = 15s) · [ ] sync ±100ms (shift = 500ms) · + − font
+      </p>
     </div>
   );
 }

@@ -70,6 +70,8 @@ class Token(Base):
     pos: Mapped[str | None] = mapped_column(String(16), nullable=True)
     grammar: Mapped[str | None] = mapped_column(String(128), nullable=True)
     is_word: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Hiragana reading for Japanese tokens (furigana). NULL for non-JA.
+    reading: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     line: Mapped[Line] = relationship(back_populates="tokens")
 
@@ -77,6 +79,7 @@ class Token(Base):
 class LemmaDefinition(Base):
     __tablename__ = "lemma_definitions"
 
+    language: Mapped[str] = mapped_column(String(8), primary_key=True, default="ru")
     lemma: Mapped[str] = mapped_column(String(128), primary_key=True)
     pos: Mapped[str] = mapped_column(String(16), primary_key=True)
     definition_en: Mapped[str] = mapped_column(Text)

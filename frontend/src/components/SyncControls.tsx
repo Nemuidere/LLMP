@@ -10,9 +10,24 @@ interface Props {
     decrease: () => void;
     reset: () => void;
   };
+  showRomaji?: boolean;
+  onToggleRomaji?: () => void;
+  hasLocalOverride?: boolean;
+  communityOffsetMs?: number;
+  onClearLocalOverride?: () => void;
 }
 
-export default function SyncControls({ offsetMs, onChange, onSave, font }: Props) {
+export default function SyncControls({
+  offsetMs,
+  onChange,
+  onSave,
+  font,
+  showRomaji,
+  onToggleRomaji,
+  hasLocalOverride,
+  communityOffsetMs,
+  onClearLocalOverride,
+}: Props) {
   const [saving, setSaving] = useState(false);
   const [savedHint, setSavedHint] = useState<string | null>(null);
 
@@ -45,6 +60,19 @@ export default function SyncControls({ offsetMs, onChange, onSave, font }: Props
         </span>
         <Btn onClick={() => bump(100)}>+100ms</Btn>
         <Btn onClick={() => bump(500)}>+500ms</Btn>
+        {hasLocalOverride && onClearLocalOverride && (
+          <button
+            onClick={onClearLocalOverride}
+            title={
+              communityOffsetMs != null
+                ? `Drop your saved offset and use the community value (${communityOffsetMs}ms)`
+                : "Drop your saved offset"
+            }
+            className="ml-2 rounded-md border border-ink-700/80 bg-ink-800/40 px-2 py-1 text-[10px] uppercase tracking-wider text-slate-400 transition hover:border-accent-400/40 hover:text-accent-200"
+          >
+            reset
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -58,6 +86,19 @@ export default function SyncControls({ offsetMs, onChange, onSave, font }: Props
       </div>
 
       <div className="flex items-center gap-3">
+        {onToggleRomaji && (
+          <button
+            onClick={onToggleRomaji}
+            className={`rounded-md border px-2.5 py-1 text-xs transition ${
+              showRomaji
+                ? "border-accent-400/40 bg-accent-400/10 text-accent-200"
+                : "border-ink-700 bg-ink-800/70 text-slate-400 hover:text-slate-200"
+            }`}
+            title="Show or hide the romaji / transliteration tier"
+          >
+            romaji
+          </button>
+        )}
         {savedHint && <span className="text-xs text-slate-400">{savedHint}</span>}
         <button
           onClick={save}

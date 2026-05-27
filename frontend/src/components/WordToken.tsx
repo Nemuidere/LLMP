@@ -13,6 +13,22 @@ export default function WordToken({ token, active }: Props) {
   if (!token.is_word) {
     return <span className="text-slate-500">{token.surface}</span>;
   }
+  // For Japanese tokens with a hiragana reading, render the surface
+  // as <ruby> with <rt> furigana. Browsers without ruby support fall
+  // back to displaying the rt text in parentheses; modern browsers
+  // render it stacked above. Translation-line tier already exists,
+  // so no romaji here.
+  const inner = token.reading ? (
+    <ruby>
+      {token.surface}
+      <rt className="text-[0.55em] font-normal tracking-tight text-slate-300">
+        {token.reading}
+      </rt>
+    </ruby>
+  ) : (
+    token.surface
+  );
+
   return (
     <span
       className="relative inline-block cursor-help"
@@ -29,7 +45,7 @@ export default function WordToken({ token, active }: Props) {
             : "hover:bg-ink-700/60 hover:text-slate-100"
         }`}
       >
-        {token.surface}
+        {inner}
       </span>
       {open && <TokenTooltip token={token} />}
     </span>

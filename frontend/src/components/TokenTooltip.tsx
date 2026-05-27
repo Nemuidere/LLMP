@@ -12,6 +12,11 @@ export default function TokenTooltip({ token }: Props) {
     >
       <span className="block font-cyr text-base font-semibold text-white">
         {token.lemma}
+        {token.reading && (
+          <span className="ml-2 align-middle text-xs font-normal text-slate-400">
+            ({token.reading})
+          </span>
+        )}
       </span>
       <span className="mt-0.5 block text-xs uppercase tracking-wide text-slate-400">
         {[token.pos, token.grammar].filter(Boolean).join(" · ") || "—"}

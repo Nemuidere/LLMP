@@ -1,25 +1,16 @@
-"""Russian tokenization + lemmatization.
+"""Russian tokenization + lemmatization (razdel + pymorphy3).
 
-Uses razdel for tokenization and pymorphy3 for morphological analysis.
-The MorphAnalyzer loads ~30MB of dict data so we initialize lazily and
+The MorphAnalyzer loads ~30MB of dict data; we initialize lazily and
 reuse the singleton across calls.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from functools import lru_cache
 
 from razdel import tokenize
 
-
-@dataclass(frozen=True)
-class AnalyzedToken:
-    surface: str
-    lemma: str
-    pos: str | None
-    grammar: str | None
-    is_word: bool
+from app.services.nlp.types import AnalyzedToken
 
 
 @lru_cache(maxsize=1)
@@ -58,14 +49,12 @@ def analyze_line(text: str) -> list[AnalyzedToken]:
                 )
             )
             continue
-        tag_str = str(top.tag)
-        pos = top.tag.POS
         out.append(
             AnalyzedToken(
                 surface=surface,
                 lemma=top.normal_form,
-                pos=pos,
-                grammar=tag_str,
+                pos=top.tag.POS,
+                grammar=str(top.tag),
                 is_word=True,
             )
         )

@@ -48,6 +48,7 @@ class TokenOut(BaseModel):
     pos: str | None
     grammar: str | None
     is_word: bool
+    reading: str | None = None
     definition_en: str | None = None
 
 
@@ -72,7 +73,45 @@ class SongOut(BaseModel):
     lines: list[LineOut] = Field(default_factory=list)
 
 
+class LibraryEntry(BaseModel):
+    id: int
+    artist: str
+    title: str
+    language: str
+    ingestion_status: str
+    is_topic_match: bool
+    youtube_video_id: str | None
+    updated_at: str
+
+
 # ----- Routes -----
+
+
+@router.get("", response_model=list[LibraryEntry])
+def list_songs(db: Session = Depends(get_db)) -> list[LibraryEntry]:
+    rows = db.execute(select(Song).order_by(Song.updated_at.desc())).scalars().all()
+    return [
+        LibraryEntry(
+            id=s.id,
+            artist=s.artist,
+            title=s.title,
+            language=s.language,
+            ingestion_status=s.ingestion_status,
+            is_topic_match=s.is_topic_match,
+            youtube_video_id=s.youtube_video_id,
+            updated_at=s.updated_at.isoformat() if s.updated_at else "",
+        )
+        for s in rows
+    ]
+
+
+@router.delete("/{song_id}", status_code=204)
+def delete_song(song_id: int, db: Session = Depends(get_db)) -> None:
+    song = db.get(Song, song_id)
+    if song is None:
+        raise HTTPException(404, "Song not found")
+    db.delete(song)
+    db.commit()
 
 
 @router.get("/autocomplete", response_model=list[AutocompleteHit])
@@ -182,25 +221,34 @@ def get_song(song_id: int, db: Session = Depends(get_db)) -> SongOut:
         defs: dict[tuple[str, str], LemmaDefinition] = {}
         if lemmas:
             for row in (
-                db.execute(select(LemmaDefinition).where(LemmaDefinition.lemma.in_(lemmas)))
+                db.execute(
+                    select(LemmaDefinition).where(
+                        LemmaDefinition.language == song.language,
+                        LemmaDefinition.lemma.in_(lemmas),
+                    )
+                )
                 .scalars()
                 .all()
             ):
                 defs[(row.lemma, row.pos)] = row
+
+        # Index defs by lemma for the any-POS fallback (first row wins).
+        defs_by_lemma: dict[str, LemmaDefinition] = {}
+        for (lemma, _pos), row in defs.items():
+            defs_by_lemma.setdefault(lemma, row)
 
         for line in lines:
             tokens_out: list[TokenOut] = []
             for tok in tokens_by_line.get(line.id, []):
                 definition: str | None = None
                 if tok.is_word:
-                    wpos = dictionary.normalize_pos(tok.pos)
-                    row = defs.get((tok.lemma, wpos)) if wpos else None
+                    row = None
+                    for cand_pos in dictionary.candidate_pos(tok.pos, song.language):
+                        row = defs.get((tok.lemma, cand_pos))
+                        if row is not None:
+                            break
                     if row is None:
-                        # Fallback: any POS row for that lemma.
-                        for (lemma, _pos), candidate in defs.items():
-                            if lemma == tok.lemma:
-                                row = candidate
-                                break
+                        row = defs_by_lemma.get(tok.lemma)
                     if row is not None:
                         definition = row.definition_en
                 tokens_out.append(
@@ -210,6 +258,7 @@ def get_song(song_id: int, db: Session = Depends(get_db)) -> SongOut:
                         pos=tok.pos,
                         grammar=tok.grammar,
                         is_word=tok.is_word,
+                        reading=tok.reading,
                         definition_en=definition,
                     )
                 )
