@@ -11,14 +11,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first (better layer caching).
+# Copy project (source + pyproject) before install — pyproject declares
+# explicit packages, so setuptools needs the source present at install time.
 COPY pyproject.toml ./
-RUN pip install --upgrade pip \
-    && pip install .
-
-# Project source.
 COPY app ./app
 COPY scripts ./scripts
+RUN pip install --upgrade pip && pip install .
 
 # SQLite file + kaikki dictionary live here; volume-mount in compose.
 RUN mkdir -p /app/data

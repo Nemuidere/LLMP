@@ -28,6 +28,7 @@ class IngestRequest(BaseModel):
     lrclib_id: int
     artist: str
     title: str
+    force: bool = False  # re-run ingestion even if the row already exists
 
 
 class IngestResponse(BaseModel):
@@ -97,11 +98,15 @@ def ingest(
         select(Song).where(Song.lrclib_id == payload.lrclib_id)
     ).scalar_one_or_none()
     if existing:
-        if existing.ingestion_status == "failed":
+        if existing.ingestion_status == "failed" or payload.force:
             existing.ingestion_status = "ingesting"
             existing.ingestion_error = None
+            # Update artist/title in case the caller refined them.
+            existing.artist = payload.artist
+            existing.title = payload.title
             db.commit()
             background.add_task(ingestion.ingest_song, existing.id)
+            return IngestResponse(song_id=existing.id, status="ingesting")
         return IngestResponse(song_id=existing.id, status=existing.ingestion_status)
 
     song = Song(
@@ -116,6 +121,20 @@ def ingest(
     db.refresh(song)
     background.add_task(ingestion.ingest_song, song.id)
     return IngestResponse(song_id=song.id, status="ingesting")
+
+
+@router.post("/{song_id}/reingest", response_model=StatusResponse)
+def reingest(
+    song_id: int, background: BackgroundTasks, db: Session = Depends(get_db)
+) -> StatusResponse:
+    song = db.get(Song, song_id)
+    if song is None:
+        raise HTTPException(404, "Song not found")
+    song.ingestion_status = "ingesting"
+    song.ingestion_error = None
+    db.commit()
+    background.add_task(ingestion.ingest_song, song.id)
+    return StatusResponse(song_id=song.id, status="ingesting", error=None)
 
 
 @router.get("/{song_id}/status", response_model=StatusResponse)
