@@ -66,18 +66,3 @@ cd frontend && npm install && npm run dev
 | `← / →` | seek ±5s (hold `shift` for ±15s) |
 | `[ / ]` | sync ±100ms (hold `shift` for ±500ms) |
 | `+ / -` | font scale up / down |
-
-## Code style
-
-`ruff` is the formatter + linter for the backend:
-
-```bash
-.venv/bin/ruff format backend/
-.venv/bin/ruff check backend/
-```
-
-Frontend uses TypeScript strict mode; run `npx tsc -b --noEmit` to typecheck.
-
-## License
-
-Personal project; no license attached yet — please don't redistribute without asking.
