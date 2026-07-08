@@ -26,9 +26,11 @@
   }
 
   /* Furigana ruby spacing — lift the line height so the small rt text
-     above each kanji doesn't crash into the line above. */
+     above each kanji doesn't crash into the row above it. The reserved
+     half-leading must exceed the rt height (~0.55em); 2.1 only matched it,
+     so wrapped lines could touch. 2.4 leaves a clear margin. */
   .ruby-line {
-    line-height: 2.1;
+    line-height: 2.4;
   }
   .ruby-line ruby > rt {
     line-height: 1;

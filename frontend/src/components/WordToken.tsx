@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { TokenOut } from "../api/types";
 import TokenTooltip from "./TokenTooltip";
@@ -10,6 +10,7 @@ interface Props {
 
 export default function WordToken({ token, active }: Props) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLSpanElement>(null);
   if (!token.is_word) {
     return <span className="text-slate-500">{token.surface}</span>;
   }
@@ -31,6 +32,7 @@ export default function WordToken({ token, active }: Props) {
 
   return (
     <span
+      ref={triggerRef}
       className="relative inline-block cursor-help"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -47,7 +49,7 @@ export default function WordToken({ token, active }: Props) {
       >
         {inner}
       </span>
-      {open && <TokenTooltip token={token} />}
+      {open && <TokenTooltip token={token} anchorRef={triggerRef} />}
     </span>
   );
 }
